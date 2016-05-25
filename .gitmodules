@@ -1,0 +1,3 @@
+[submodule "libnmea"]
+	path = libnmea
+	url = git@github.com:GoodRon/libnmea.git
