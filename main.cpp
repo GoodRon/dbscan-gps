@@ -13,14 +13,7 @@
 using namespace std;
 using namespace DbscanGps;
 
-struct Cluster {
-    vector<GpsData> points;
-};
-
 const string gps_log = "../data/gps_log_mt284";
-
-const int minPts = 5;
-const double eps = 10.0;
 
 int main(int argc, char** argv) {
     vector<GpsData> points;

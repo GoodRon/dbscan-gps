@@ -77,7 +77,7 @@ set<size_t> findNeighbours(size_t ipoint, const GpsPoints& points, const Selecti
 GpsClusters scan(const GpsPoints& points, const SelectionRules& rules) {
     set<size_t> visited;
     GpsClusters clusters;
-    GpsCluster noise;
+    GpsCluster noise = {};
 
     for (size_t ipoint = 0; ipoint < points.size(); ++ipoint) {
         if (visited.find(ipoint) != visited.end()) {
@@ -90,7 +90,7 @@ GpsClusters scan(const GpsPoints& points, const SelectionRules& rules) {
             noise.points.push_back(points[ipoint]);
         }
 
-        GpsCluster cluster;
+        GpsCluster cluster = {};
         cluster.points.push_back(points[ipoint]);
 
         while (!neighbours.empty()) {
