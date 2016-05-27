@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
 
         lines = nmea::split(line);
         for (auto &nmeaLine: lines) {
-            cout << "Split nmea: " << nmeaLine << endl;
+//            cout << "Split nmea: " << nmeaLine << endl;
             if (!nmea::checkCrc(nmeaLine)) {
                 cout << "Crc check error for NMEA string: " << nmeaLine << endl;
                 continue;

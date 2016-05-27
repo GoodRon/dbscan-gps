@@ -112,6 +112,7 @@ GpsClusters scan(const GpsPoints& points, const SelectionRules& rules) {
         }
         clusters.push_back(move(cluster));
     }
+    clusters.push_back(noise);
     return clusters;
 }
 
