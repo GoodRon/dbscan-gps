@@ -8,8 +8,10 @@
 
 #include "nmea.h"
 #include "gps.h"
+#include "dbscan-gps.hxx"
 
 using namespace std;
+using namespace DbscanGps;
 
 struct Cluster {
     vector<GpsData> points;
@@ -55,5 +57,9 @@ int main(int argc, char** argv) {
 
     cout << "There is " << points.size() << " points" << endl;
 
+    SelectionRules rules = {30.0, 30.0, 0.0, 0.0, 0.0, 0, 4};
+    auto clusters = scan(points, rules);
+
+    cout << "Found " << clusters.size() << " clusters" << endl;
     return 0;
 }

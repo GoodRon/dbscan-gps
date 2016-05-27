@@ -2,7 +2,7 @@
 // Created by roman on 25.05.16.
 //
 
-#include <unordered_set>
+#include <set>
 
 #include "dbscan-gps.hxx"
 #include "filtersFunctions.h"
@@ -13,17 +13,19 @@ using namespace nmea;
 
 namespace DbscanGps {
 
-unordered_set<GpsPoints::const_iterator> findNeighbours(const GpsPoints::const_iterator& ipoint,
-                                                        const GpsPoints& points,
-                                                        const SelectionRules& rules) {
-    unordered_set<GpsPoints::const_iterator> neighbours;
-    const GpsPoint& point = *ipoint;
+set<size_t> findNeighbours(size_t ipoint, const GpsPoints& points, const SelectionRules& rules) {
+    if (ipoint >= points.size()) {
+        return set<size_t>();
+    }
 
-    for (auto ineighbour = points.begin(); ineighbour != points.end(); ++ineighbour) {
+    set<size_t> neighbours;
+    const GpsPoint& point = points[ipoint];
+
+    for (size_t ineighbour = 0; ineighbour < points.size(); ++ineighbour) {
         if (ineighbour == ipoint) {
             continue;
         }
-        const GpsPoint& neighbour = *ineighbour;
+        const GpsPoint& neighbour = points[ineighbour];
 
         if (rules.epsMeters > 0.0) {
             double distance = calculateDistance(convertDegreesFromNmeaToNormal(point.latitude),
@@ -43,7 +45,7 @@ unordered_set<GpsPoints::const_iterator> findNeighbours(const GpsPoints::const_i
             }
         }
 
-        if (rules.epsTimestamp > 0.0) {
+        if (rules.epsTimestamp > 0) {
             if (labs(point.timestamp - neighbour.timestamp) > rules.epsTimestamp) {
                 continue;
             }
@@ -72,20 +74,12 @@ unordered_set<GpsPoints::const_iterator> findNeighbours(const GpsPoints::const_i
     return neighbours;
 }
 
-GpsCluster construtCluster(const GpsPoints::const_iterator& ipoint,
-                           const unordered_set<GpsPoints::const_iterator>& neighbours,
-                           const SelectionRules& rules) {
-    GpsCluster cluster;
-    cluster.points.push_back(*ipoint);
-
-}
-
 GpsClusters scan(const GpsPoints& points, const SelectionRules& rules) {
-    unordered_set<GpsPoints::const_iterator> visited;
+    set<size_t> visited;
     GpsClusters clusters;
     GpsCluster noise;
 
-    for (auto ipoint = points.begin(); ipoint != points.end(); ++ipoint) {
+    for (size_t ipoint = 0; ipoint < points.size(); ++ipoint) {
         if (visited.find(ipoint) != visited.end()) {
             continue;
         }
@@ -93,15 +87,14 @@ GpsClusters scan(const GpsPoints& points, const SelectionRules& rules) {
 
         auto neighbours = findNeighbours(ipoint, points, rules);
         if (neighbours.size() < rules.minPts) {
-            noise.points.push_back(*ipoint);
+            noise.points.push_back(points[ipoint]);
         }
 
-        // New cluster
         GpsCluster cluster;
-        cluster.points.push_back(*ipoint);
+        cluster.points.push_back(points[ipoint]);
 
         while (!neighbours.empty()) {
-            unordered_set<GpsPoints::const_iterator> moreNeighbours;
+            set<size_t> moreNeighbours;
             for (auto& ineighbour: neighbours) {
                 if (visited.find(ineighbour) != visited.end()) {
                     continue;
@@ -113,7 +106,7 @@ GpsClusters scan(const GpsPoints& points, const SelectionRules& rules) {
                     moreNeighbours.insert(nextNeighbours.begin(),
                                           nextNeighbours.end());
                 }
-                cluster.points.push_back(*ineighbour);
+                cluster.points.push_back(points[ineighbour]);
             }
             neighbours = move(moreNeighbours);
         }
