@@ -36,8 +36,15 @@ GpsPoints findNeighbours(const GpsPoint& point, const GpsPoints& points,
             }
         }
 
-        if (rules.epsSeconds > 0.0) {
-            if (labs(point.timestamp - neighbour.timestamp) > rules.epsSeconds) {
+        if (rules.epsAngle > 0.0) {
+            double delta = calculateAngleDelta(point.direction, neighbour.direction);
+            if (delta > rules.epsAngle) {
+                continue;
+            }
+        }
+
+        if (rules.epsTimestamp > 0.0) {
+            if (labs(point.timestamp - neighbour.timestamp) > rules.epsTimestamp) {
                 continue;
             }
         }
