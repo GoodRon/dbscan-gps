@@ -2,28 +2,28 @@
 // Created by roman on 25.05.16.
 //
 
+#include <unordered_set>
+
 #include "dbscan-gps.hxx"
+#include "filtersFunctions.h"
+#include "nmea.h"
 
-struct MarkedPoint {
-    gpsPoint point;
-    bool isChecked;
-};
+using namespace std;
+using namespace nmea;
 
-typedef std::vector<MarkedPoint> MarkedPoints;
+namespace DbscanGps {
 
-DbscanClasses scan(const GpsPoints& points, const SelectionRules& rules) {
+unordered_set<GpsPoints::const_iterator> findNeighbours(const GpsPoints::const_iterator& ipoint,
+                                                        const GpsPoints& points,
+                                                        const SelectionRules& rules) {
+    unordered_set<GpsPoints::const_iterator> neighbours;
+    const GpsPoint& point = *ipoint;
 
-}
-
-GpsPoints findNeighbours(const GpsPoint& point, const GpsPoints& points,
-                         const SelectionRules& rules) {
-    GpsPoints neighbours;
-
-    for (auto& neighbour: points) {
-        // TODO optimize it
-        if (neighbour == point) {
+    for (auto ineighbour = points.begin(); ineighbour != points.end(); ++ineighbour) {
+        if (ineighbour == ipoint) {
             continue;
         }
+        const GpsPoint& neighbour = *ineighbour;
 
         if (rules.epsMeters > 0.0) {
             double distance = calculateDistance(convertDegreesFromNmeaToNormal(point.latitude),
@@ -67,7 +67,59 @@ GpsPoints findNeighbours(const GpsPoint& point, const GpsPoints& points,
             }
         }
 
-        neighbours.push_back(neighbour);
+        neighbours.insert(ineighbour);
     }
     return neighbours;
+}
+
+GpsCluster construtCluster(const GpsPoints::const_iterator& ipoint,
+                           const unordered_set<GpsPoints::const_iterator>& neighbours,
+                           const SelectionRules& rules) {
+    GpsCluster cluster;
+    cluster.points.push_back(*ipoint);
+
+}
+
+GpsClusters scan(const GpsPoints& points, const SelectionRules& rules) {
+    unordered_set<GpsPoints::const_iterator> visited;
+    GpsClusters clusters;
+    GpsCluster noise;
+
+    for (auto ipoint = points.begin(); ipoint != points.end(); ++ipoint) {
+        if (visited.find(ipoint) != visited.end()) {
+            continue;
+        }
+        visited.insert(ipoint);
+
+        auto neighbours = findNeighbours(ipoint, points, rules);
+        if (neighbours.size() < rules.minPts) {
+            noise.points.push_back(*ipoint);
+        }
+
+        // New cluster
+        GpsCluster cluster;
+        cluster.points.push_back(*ipoint);
+
+        while (!neighbours.empty()) {
+            unordered_set<GpsPoints::const_iterator> moreNeighbours;
+            for (auto& ineighbour: neighbours) {
+                if (visited.find(ineighbour) != visited.end()) {
+                    continue;
+                }
+                visited.insert(ineighbour);
+
+                auto nextNeighbours = findNeighbours(ineighbour, points, rules);
+                if (nextNeighbours.size() >= rules.minPts) {
+                    moreNeighbours.insert(nextNeighbours.begin(),
+                                          nextNeighbours.end());
+                }
+                cluster.points.push_back(*ineighbour);
+            }
+            neighbours = move(moreNeighbours);
+        }
+        clusters.push_back(move(cluster));
+    }
+    return clusters;
+}
+
 }

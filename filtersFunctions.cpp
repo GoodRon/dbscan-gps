@@ -63,18 +63,20 @@ double calculateDistance(double latFrom, double longFrom, double latTo, double l
 }
 
 double calculateDistanceByAngle(double latFrom, double longFrom, double latTo, double longTo) {
+	const double radian = (M_PI / 180.0);
+
 	// Преобразуем градусы в радианы
-	double lon1 = RADIAN * -longFrom;
-	double lat1 = RADIAN * latFrom;
-	double lon2 = RADIAN * -longTo;
-	double lat2 = RADIAN * latTo;
+	double lon1 = radian * -longFrom;
+	double lat1 = radian * latFrom;
+	double lon2 = radian * -longTo;
+	double lat2 = radian * latTo;
 
 	// Вычисляем угловое расстояние по дуге большого радиуса
 	double d = 2.0 * asin(sqrt(pow(sin((lat1 - lat2) / 2.0), 2.0) + cos(lat1) * cos(lat2) *
 							   pow(sin((lon1 - lon2) / 2.0), 2.0)));
 
 	// Вычисляем расстояние в метрах
-	return static_cast<double>(NAUTICAL_MILE * 60.0 * d / RADIAN);
+	return static_cast<double>(metersInNauticalMile * 60.0 * d / radian);
 }
 
 double normalizeAngle(double angle) {

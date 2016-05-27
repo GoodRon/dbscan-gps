@@ -8,9 +8,12 @@
 #include <functional>
 #include <vector>
 
-struct GpsData;
+#include "gps.h"
 
 namespace DbscanGps {
+
+typedef GpsData GpsPoint;
+typedef std::vector<GpsPoint> GpsPoints;
 
 struct SelectionRules {
     double epsMeters;
@@ -22,15 +25,14 @@ struct SelectionRules {
     unsigned minPts;
 };
 
-struct Class {
-    gpsPoints points;
+struct GpsCluster {
+//	std::string name;
+    GpsPoints points;
 };
 
-typedef std::vector<GpsData> GpsPoints;
-typedef GpsData GpsPoint;
-typedef std::vector<Class> Classes;
+typedef std::vector<GpsCluster> GpsClusters;
 
-Classes scan(const GpsPoints& points, const SelectionRules& rules);
+GpsClusters scan(const GpsPoints& points, const SelectionRules& rules);
 
 }
 
