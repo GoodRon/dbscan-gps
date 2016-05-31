@@ -45,7 +45,7 @@ void visualization(int argc, char** argv, const GpsClusters& clusters) {
     vector<DrawableTrack> drawableTracks;
 
     for (auto& cluster: clusters) {
-        cout << "cluster:" << endl;
+//        cout << "cluster:" << endl;
 
         DrawableTrack drawableTrack;
         drawableTrack.track = osm_gps_map_track_new();
@@ -54,12 +54,10 @@ void visualization(int argc, char** argv, const GpsClusters& clusters) {
             auto lat = nmea::convertDegreesFromNmeaToNormal(clusterPoint.latitude);
             auto lon = nmea::convertDegreesFromNmeaToNormal(clusterPoint.longitude);
 
-            cout << "point lat: " << lat << " lon: "
-                 << lon << endl;
+//            cout << "point lat: " << lat << " lon: "
+//                 << lon << endl;
 
             OsmGpsMapPoint* point = osm_gps_map_point_new_degrees(lat, lon);
-
-            osm_gps_map_gps_add(map, lat, lon, clusterPoint.direction);
 
             drawableTrack.points.push_back(point);
             osm_gps_map_track_add_point(drawableTrack.track, point);
@@ -112,7 +110,7 @@ int main(int argc, char** argv) {
 
     cout << "There is " << points.size() << " points" << endl;
 
-    SelectionRules rules = {30.0, 30.0, 0.0, 0.0, 0.0, 0, 4};
+    SelectionRules rules = {30.0, 30.0, 0.0, 0.0, 0.0, 600, 4};
     auto clusters = scan(points, rules);
 
     cout << "Found " << clusters.size() << " clusters" << endl;
