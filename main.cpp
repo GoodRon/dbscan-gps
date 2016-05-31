@@ -3,6 +3,7 @@
 //
 
 #include <iostream>
+#include <algorithm>
 #include <fstream>
 #include <vector>
 #include <memory>
@@ -13,7 +14,7 @@
 #include "nmea.h"
 #include "gps.h"
 #include "dbscan-gps.hxx"
-
+#include "FastFilter.h"
 #include "osm-gps-map.h"
 
 using namespace std;
@@ -49,6 +50,7 @@ void visualization(int argc, char** argv, const GpsClusters& clusters) {
 
         DrawableTrack drawableTrack;
         drawableTrack.track = osm_gps_map_track_new();
+
         for (auto& clusterPoint: cluster.points) {
 
             auto lat = nmea::convertDegreesFromNmeaToNormal(clusterPoint.latitude);
@@ -76,8 +78,6 @@ void visualization(int argc, char** argv, const GpsClusters& clusters) {
 }
 
 int main(int argc, char** argv) {
-    vector<GpsData> points;
-
     ifstream log(gps_log.c_str());
     if (!log.good()) {
         cout << "Can't open file '" << gps_log << "'" << endl;
@@ -87,6 +87,7 @@ int main(int argc, char** argv) {
     string line;
     vector<string> lines;
     GpsData point;
+    vector<GpsData> points;
     while (true) {
         if (!getline(log, line)) {
             break;
@@ -110,10 +111,31 @@ int main(int argc, char** argv) {
 
     cout << "There is " << points.size() << " points" << endl;
 
-    SelectionRules rules = {30.0, 30.0, 0.0, 0.0, 0.0, 600, 4};
-    auto clusters = scan(points, rules);
+    // Фильтрация
+    vector<GpsData> filteredPoints;
+    FastFilter filter;
+    filter.setMaxSilenceTimeout(10);
+    for (auto& point: points) {
+        if (filter.process(point)) {
+            filteredPoints.push_back(point);
+        }
+    }
+
+    cout << "There is " << filteredPoints.size() << " filtered points" << endl;
+
+    // Кластеризация
+    SelectionRules rules = {450.0, 50.0, 10.0, 0.0, 0.0, 120, 3};
+    auto clusters = scan(filteredPoints, rules);
 
     cout << "Found " << clusters.size() << " clusters" << endl;
+
+    // Сортируем точки по времени для наглядной визуализации
+    for (auto& cluster: clusters) {
+        sort(cluster.points.begin(), cluster.points.end(), [](const GpsPoint& lhs,
+                                                              const GpsPoint& rhs)->bool{
+            return lhs.timestamp < rhs.timestamp;
+        });
+    }
 
     visualization(argc, argv, clusters);
     return 0;

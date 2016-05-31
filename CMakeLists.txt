@@ -20,7 +20,7 @@ add_definitions(${GTK3_CFLAGS_OTHER})
 include_directories("${CMAKE_SOURCE_DIR}/extern/include/")
 link_directories("${CMAKE_SOURCE_DIR}/extern/lib/")
 
-add_executable(dbscan-gps main.cpp dbscan-gps.cpp filtersFunctions.cpp)
+add_executable(dbscan-gps main.cpp dbscan-gps.cpp filtersFunctions.cpp GpsFilter.cxx FastFilter.cxx)
 target_link_libraries(dbscan-gps ${GTK3_LIBRARIES} nmea osmgpsmap-1.0 cairo)
 
 install(TARGETS dbscan-gps RUNTIME DESTINATION .)
