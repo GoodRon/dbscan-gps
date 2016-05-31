@@ -10,17 +10,20 @@
 #include <cstdlib>
 
 #include <gtk/gtk.h>
+#include <jsoncpp/json/json.h>
 
 #include "nmea.h"
 #include "gps.h"
 #include "dbscan-gps.hxx"
 #include "FastFilter.h"
+#include "filtersFunctions.h"
 #include "osm-gps-map.h"
 
 using namespace std;
 using namespace DbscanGps;
 
 const string gps_log = "data/gps_log_mt284";
+const string rules_file = "data/rules.conf";
 
 void visualization(int argc, char** argv, const GpsClusters& clusters) {
     OsmGpsMap *map;
@@ -40,6 +43,7 @@ void visualization(int argc, char** argv, const GpsClusters& clusters) {
 
     struct DrawableTrack {
         vector<OsmGpsMapPoint*> points;
+        // разделить треки
         OsmGpsMapTrack* track;
     };
 
@@ -77,7 +81,66 @@ void visualization(int argc, char** argv, const GpsClusters& clusters) {
     gtk_main();
 }
 
+bool loadRules(const std::string& json, SelectionRules& rules, FastFilter& filter) {
+    ifstream jsonFile;
+    jsonFile.open(json);
+    if (!jsonFile.good()) {
+        cerr << "Can't open json file " << json << endl;
+        return false;
+    }
+
+    string line;
+    string jsonContent;
+    while (getline(jsonFile, line)) {
+        jsonContent += line;
+    }
+
+    Json::Value root;
+    Json::Reader reader;
+
+    if (!reader.parse(jsonContent, root)) {
+        cerr << "Can't parse json from " << json << endl;
+        return false;
+    }
+
+    // Загружаем параметры DBSCAN
+    Json::Value rulesSection = root["rules"];
+    rules.epsMeters = rulesSection.get("epsMeters", "0.0").asDouble();
+    rules.epsAngle = rulesSection.get("epsAngle", "0.0").asDouble();
+    rules.epsSpeed = rulesSection.get("epsSpeed", "0.0").asDouble();
+    rules.epsHdop = rulesSection.get("epsHdop", "0.0").asDouble();
+    rules.epsVdop = rulesSection.get("epsVdop", "0.0").asDouble();
+    rules.epsTimestamp = rulesSection.get("epsTimestamp", "0").asInt64();
+    rules.minPts = rulesSection.get("minPts", "0").asUInt();
+
+    // Загружаем параметры фильтрации
+    Json::Value filterSection = root["filter"];
+    filter.setSpeedLimit(filterSection.get("speedLimit", "60.0").asDouble());
+    filter.setCutOffRadius(filterSection.get("cutOffRadius", "10.0").asDouble());
+    filter.setMaxAngleDelta(normalizeAngle(filterSection.get("maxAngleDelta", "15.0").asDouble()));
+    filter.setMaxSilenceTimeout(filterSection.get("maxSilenceTimeout", "20").asInt64());
+    filter.setMaxSpeedDelta(filterSection.get("maxSpeedDelta", "10.0").asDouble());
+    filter.setMaxHdop(filterSection.get("maxHDOP", "2.0").asDouble());
+    filter.setMaxVdop(filterSection.get("maxVDOP", "2.0").asDouble());
+    filter.setHacc(filterSection.get("HACC", "30.0").asDouble());
+    filter.setVacc(filterSection.get("VACC", "3.3").asDouble());
+    filter.setMinSattelites(filterSection.get("minSatellites", "7").asUInt());
+    filter.setMaxSpeed(filterSection.get("maxSpeed", "160.0").asDouble());
+    filter.setMinRealiableSpeed(filterSection.get("minReliableSpeed", "8.0").asDouble());
+    filter.setMaxAcceleration(filterSection.get("maxAcceleration", "6.0").asDouble());
+
+    return true;
+}
+
 int main(int argc, char** argv) {
+    // Загружаем параметры
+    FastFilter filter;
+    SelectionRules rules;
+    if (!loadRules(rules_file, rules, filter)) {
+        cerr << "Can't read " << rules_file << ", will use default parameters" << endl;
+    }
+
+    // Загружаем трек
     ifstream log(gps_log.c_str());
     if (!log.good()) {
         cout << "Can't open file '" << gps_log << "'" << endl;
@@ -113,7 +176,6 @@ int main(int argc, char** argv) {
 
     // Фильтрация
     vector<GpsData> filteredPoints;
-    FastFilter filter;
     filter.setMaxSilenceTimeout(10);
     for (auto& point: points) {
         if (filter.process(point)) {
@@ -124,7 +186,6 @@ int main(int argc, char** argv) {
     cout << "There is " << filteredPoints.size() << " filtered points" << endl;
 
     // Кластеризация
-    SelectionRules rules = {450.0, 50.0, 10.0, 0.0, 0.0, 120, 3};
     auto clusters = scan(filteredPoints, rules);
 
     cout << "Found " << clusters.size() << " clusters" << endl;

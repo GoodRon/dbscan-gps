@@ -21,7 +21,7 @@ include_directories("${CMAKE_SOURCE_DIR}/extern/include/")
 link_directories("${CMAKE_SOURCE_DIR}/extern/lib/")
 
 add_executable(dbscan-gps main.cpp dbscan-gps.cpp filtersFunctions.cpp GpsFilter.cxx FastFilter.cxx)
-target_link_libraries(dbscan-gps ${GTK3_LIBRARIES} nmea osmgpsmap-1.0 cairo)
+target_link_libraries(dbscan-gps ${GTK3_LIBRARIES} nmea osmgpsmap-1.0 jsoncpp)
 
 install(TARGETS dbscan-gps RUNTIME DESTINATION .)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/data DESTINATION . USE_SOURCE_PERMISSIONS)
