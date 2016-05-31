@@ -21,11 +21,12 @@
 
 using namespace std;
 using namespace DbscanGps;
+using namespace nmea;
 
 const string gps_log = "data/gps_log_mt284";
 const string rules_file = "data/rules.conf";
 
-void visualization(int argc, char** argv, const GpsClusters& clusters) {
+void visualization(int argc, char** argv, const GpsClusters& clusters, double breakDistance = 0.0) {
     OsmGpsMap *map;
     GtkWidget *window;
 
@@ -43,35 +44,47 @@ void visualization(int argc, char** argv, const GpsClusters& clusters) {
 
     struct DrawableTrack {
         vector<OsmGpsMapPoint*> points;
-        // разделить треки
-        OsmGpsMapTrack* track;
+        vector<OsmGpsMapTrack*> track;
     };
 
     vector<DrawableTrack> drawableTracks;
 
     for (auto& cluster: clusters) {
-//        cout << "cluster:" << endl;
+        if (cluster.points.size() <= 0) {
+            continue;
+        }
 
         DrawableTrack drawableTrack;
-        drawableTrack.track = osm_gps_map_track_new();
+        GdkRGBA color = {(rand()%100)/100.0, (rand()%100)/100.0, (rand()%100)/100.0, 1.0};
+        drawableTrack.track.push_back(osm_gps_map_track_new());
+        GpsPoint prewPoint = *cluster.points.begin();
 
         for (auto& clusterPoint: cluster.points) {
-
-            auto lat = nmea::convertDegreesFromNmeaToNormal(clusterPoint.latitude);
-            auto lon = nmea::convertDegreesFromNmeaToNormal(clusterPoint.longitude);
-
-//            cout << "point lat: " << lat << " lon: "
-//                 << lon << endl;
-
+            auto lat = convertDegreesFromNmeaToNormal(clusterPoint.latitude);
+            auto lon = convertDegreesFromNmeaToNormal(clusterPoint.longitude);
             OsmGpsMapPoint* point = osm_gps_map_point_new_degrees(lat, lon);
-
             drawableTrack.points.push_back(point);
-            osm_gps_map_track_add_point(drawableTrack.track, point);
+
+            // Разрываем треки в одном кластере для лучшего отображения
+            if (breakDistance > 0.0) {
+                auto prewLat = convertDegreesFromNmeaToNormal(prewPoint.latitude);
+                auto prewLon = convertDegreesFromNmeaToNormal(prewPoint.longitude);
+
+                double distance = calculateDistance(prewLat, prewLon, lat, lon);
+                if (distance >= breakDistance) {
+                    g_object_set(drawableTrack.track.back(), "editable", TRUE, NULL);
+                    osm_gps_map_track_set_color(drawableTrack.track.back(), &color);
+                    osm_gps_map_track_add(map, drawableTrack.track.back());
+                    drawableTrack.track.push_back(osm_gps_map_track_new());
+                }
+            }
+            osm_gps_map_track_add_point(drawableTrack.track.back(), point);
+            prewPoint = clusterPoint;
         }
-        g_object_set(drawableTrack.track, "editable", TRUE, NULL);
-        GdkRGBA color = {(rand()%100)/100.0, (rand()%100)/100.0, (rand()%100)/100.0, 1.0};
-        osm_gps_map_track_set_color(drawableTrack.track, &color);
-        osm_gps_map_track_add(map, drawableTrack.track);
+
+        g_object_set(drawableTrack.track.back(), "editable", TRUE, NULL);
+        osm_gps_map_track_set_color(drawableTrack.track.back(), &color);
+        osm_gps_map_track_add(map, drawableTrack.track.back());
         drawableTracks.push_back(drawableTrack);
     }
 
@@ -81,7 +94,8 @@ void visualization(int argc, char** argv, const GpsClusters& clusters) {
     gtk_main();
 }
 
-bool loadRules(const std::string& json, SelectionRules& rules, FastFilter& filter) {
+bool loadRules(const std::string& json, SelectionRules& rules, FastFilter& filter,
+               double& breakDistance) {
     ifstream jsonFile;
     jsonFile.open(json);
     if (!jsonFile.good()) {
@@ -129,6 +143,9 @@ bool loadRules(const std::string& json, SelectionRules& rules, FastFilter& filte
     filter.setMinRealiableSpeed(filterSection.get("minReliableSpeed", "8.0").asDouble());
     filter.setMaxAcceleration(filterSection.get("maxAcceleration", "6.0").asDouble());
 
+    // Загружаем параметры визуализации
+    Json::Value visualisationSection = root["visualisation"];
+    breakDistance = visualisationSection.get("breakDistance", "500.0").asDouble();
     return true;
 }
 
@@ -136,7 +153,8 @@ int main(int argc, char** argv) {
     // Загружаем параметры
     FastFilter filter;
     SelectionRules rules;
-    if (!loadRules(rules_file, rules, filter)) {
+    double breakDistance = 500.0;
+    if (!loadRules(rules_file, rules, filter, breakDistance)) {
         cerr << "Can't read " << rules_file << ", will use default parameters" << endl;
     }
 
@@ -172,8 +190,6 @@ int main(int argc, char** argv) {
         }
     }
 
-    cout << "There is " << points.size() << " points" << endl;
-
     // Фильтрация
     vector<GpsData> filteredPoints;
     filter.setMaxSilenceTimeout(10);
@@ -183,6 +199,7 @@ int main(int argc, char** argv) {
         }
     }
 
+    cout << "There is " << points.size() << " points" << endl;
     cout << "There is " << filteredPoints.size() << " filtered points" << endl;
 
     // Кластеризация
@@ -198,6 +215,6 @@ int main(int argc, char** argv) {
         });
     }
 
-    visualization(argc, argv, clusters);
+    visualization(argc, argv, clusters, breakDistance);
     return 0;
 }
