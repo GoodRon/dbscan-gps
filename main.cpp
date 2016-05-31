@@ -5,6 +5,8 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <memory>
+#include <cstdlib>
 
 #include <gtk/gtk.h>
 
@@ -19,7 +21,7 @@ using namespace DbscanGps;
 
 const string gps_log = "data/gps_log_mt284";
 
-void visualization(int argc, char** argv, const GpsClusters& cluster) {
+void visualization(int argc, char** argv, const GpsClusters& clusters) {
     OsmGpsMap *map;
     GtkWidget *window;
 
@@ -32,6 +34,42 @@ void visualization(int argc, char** argv, const GpsClusters& cluster) {
     map = static_cast<OsmGpsMap*>(g_object_new (OSM_TYPE_GPS_MAP, NULL));
     gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(map));
     osm_gps_map_set_center_and_zoom(map, 56.4833, 84.9545, 13);
+
+    srand(time(NULL));
+
+    struct DrawableTrack {
+        vector<OsmGpsMapPoint*> points;
+        OsmGpsMapTrack* track;
+    };
+
+    vector<DrawableTrack> drawableTracks;
+
+    for (auto& cluster: clusters) {
+        cout << "cluster:" << endl;
+
+        DrawableTrack drawableTrack;
+        drawableTrack.track = osm_gps_map_track_new();
+        for (auto& clusterPoint: cluster.points) {
+
+            auto lat = nmea::convertDegreesFromNmeaToNormal(clusterPoint.latitude);
+            auto lon = nmea::convertDegreesFromNmeaToNormal(clusterPoint.longitude);
+
+            cout << "point lat: " << lat << " lon: "
+                 << lon << endl;
+
+            OsmGpsMapPoint* point = osm_gps_map_point_new_degrees(lat, lon);
+
+            osm_gps_map_gps_add(map, lat, lon, clusterPoint.direction);
+
+            drawableTrack.points.push_back(point);
+            osm_gps_map_track_add_point(drawableTrack.track, point);
+        }
+        g_object_set(drawableTrack.track, "editable", TRUE, NULL);
+        GdkRGBA color = {(rand()%100)/100.0, (rand()%100)/100.0, (rand()%100)/100.0, 1.0};
+        osm_gps_map_track_set_color(drawableTrack.track, &color);
+        osm_gps_map_track_add(map, drawableTrack.track);
+        drawableTracks.push_back(drawableTrack);
+    }
 
     gtk_widget_show (GTK_WIDGET(map));
     gtk_widget_show (window);
