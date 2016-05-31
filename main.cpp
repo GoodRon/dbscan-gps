@@ -214,8 +214,8 @@ int main(int argc, char** argv) {
         }
     }
 
-    cout << "There is " << points.size() << " points" << endl;
-    cout << "There is " << filteredPoints.size() << " filtered points" << endl;
+    cout << "There are " << points.size() << " points" << endl;
+    cout << "There are " << filteredPoints.size() << " filtered points" << endl;
 
     // Кластеризация
     auto clusters = scan(filteredPoints, rules);
