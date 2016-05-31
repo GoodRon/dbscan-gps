@@ -7,6 +7,8 @@ set(CMAKE_CXX_FLAGS "-std=c++0x")
 include_directories(libnmea)
 add_subdirectory(libnmea)
 
+add_subdirectory(test)
+
 add_executable(dbscan-gps main.cpp dbscan-gps.cpp filtersFunctions.cpp)
 target_link_libraries(dbscan-gps nmea)
 
