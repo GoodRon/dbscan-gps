@@ -17,13 +17,14 @@
 #include "dbscan-gps.hxx"
 #include "FastFilter.h"
 #include "filtersFunctions.h"
+#include "filesystem.h"
 #include "osm-gps-map.h"
 
 using namespace std;
 using namespace DbscanGps;
 using namespace nmea;
+using namespace filesystem;
 
-const string gps_log = "data/gps_log_mt284";
 const string rules_file = "data/rules.conf";
 
 void visualization(int argc, char** argv, const GpsClusters& clusters, double breakDistance = 0.0) {
@@ -149,26 +150,16 @@ bool loadRules(const std::string& json, SelectionRules& rules, FastFilter& filte
     return true;
 }
 
-int main(int argc, char** argv) {
-    // Загружаем параметры
-    FastFilter filter;
-    SelectionRules rules;
-    double breakDistance = 500.0;
-    if (!loadRules(rules_file, rules, filter, breakDistance)) {
-        cerr << "Can't read " << rules_file << ", will use default parameters" << endl;
-    }
-
-    // Загружаем трек
-    ifstream log(gps_log.c_str());
+bool loadTrack(const std::string& file, GpsPoints& points) {
+    ifstream log(file.c_str());
     if (!log.good()) {
-        cout << "Can't open file '" << gps_log << "'" << endl;
-        return -1;
+        cerr << "Can't open track file '" << file << "'" << endl;
+        return false;
     }
 
     string line;
     vector<string> lines;
-    GpsData point;
-    vector<GpsData> points;
+    GpsPoint point;
     while (true) {
         if (!getline(log, line)) {
             break;
@@ -176,9 +167,8 @@ int main(int argc, char** argv) {
 
         lines = nmea::split(line);
         for (auto &nmeaLine: lines) {
-//            cout << "Split nmea: " << nmeaLine << endl;
             if (!nmea::checkCrc(nmeaLine)) {
-                cout << "Crc check error for NMEA string: " << nmeaLine << endl;
+                cerr << "Crc check error for NMEA string: " << nmeaLine << endl;
                 continue;
             }
 
@@ -189,9 +179,34 @@ int main(int argc, char** argv) {
             }
         }
     }
+    return true;
+}
+
+bool loadAllTracks(const std::string& directory, GpsPoints& points) {
+    auto tracks = getFileNames(directory);
+    for (auto& track: tracks) {
+        loadTrack(directory + "/" + track, points);
+    }
+    return true;
+}
+
+int main(int argc, char** argv) {
+    // Загружаем параметры
+    FastFilter filter;
+    SelectionRules rules;
+    double breakDistance = 500.0;
+    if (!loadRules(rules_file, rules, filter, breakDistance)) {
+        cerr << "Can't read " << rules_file << ", will use default parameters" << endl;
+    }
+
+    // Загружаем точки всех треков
+    GpsPoints points;
+    if (!loadAllTracks("data/tracks", points)) {
+        return -1;
+    }
 
     // Фильтрация
-    vector<GpsData> filteredPoints;
+    GpsPoints filteredPoints;
     filter.setMaxSilenceTimeout(10);
     for (auto& point: points) {
         if (filter.process(point)) {
