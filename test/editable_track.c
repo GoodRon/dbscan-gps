@@ -1,15 +1,5 @@
 #include <gtk/gtk.h>
-#include <gdk/gdk.h>
 #include "osm-gps-map.h"
-
-/*
-typedef struct {
-  gdouble red;
-    gdouble green;
-      gdouble blue;
-        gdouble alpha;
-	} GdkRGBA;
-*/
 
 int
 main (int   argc,
@@ -42,8 +32,6 @@ main (int   argc,
 	g_object_set(track, "editable", TRUE, NULL);
 
 	GdkRGBA color = {0.0, 1.0, 1.0, 0.0};
-
-	//g_object_set(track, "color", &color, NULL);
 	osm_gps_map_track_set_color(track, &color);
 
 	osm_gps_map_track_add(map, track);

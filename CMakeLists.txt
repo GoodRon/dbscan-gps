@@ -13,3 +13,4 @@ add_executable(dbscan-gps main.cpp dbscan-gps.cpp filtersFunctions.cpp)
 target_link_libraries(dbscan-gps nmea)
 
 install(TARGETS dbscan-gps RUNTIME DESTINATION .)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/data DESTINATION . USE_SOURCE_PERMISSIONS)

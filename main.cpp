@@ -13,7 +13,7 @@
 using namespace std;
 using namespace DbscanGps;
 
-const string gps_log = "../data/gps_log_mt284";
+const string gps_log = "data/gps_log_mt284";
 
 int main(int argc, char** argv) {
     vector<GpsData> points;
